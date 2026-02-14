@@ -14,6 +14,7 @@ import Problems from "./pages/Problems";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import Chatbot from "@/components/Chatbot";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => {
               </Routes>
             </main>
             <Footer />
+            <Chatbot />
           </BrowserRouter>
         </div>
       </TooltipProvider>
