@@ -29,7 +29,7 @@ const App = () => {
         <Sonner />
         {!loaded && <LoadingScreen onComplete={handleLoaded} />}
         <div className={`transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <ParticleGrid />
             <Navbar />
             <main className="pt-0">
