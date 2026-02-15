@@ -13,60 +13,122 @@ const bootLines = [
 function playStartupSound(ctx: AudioContext) {
   const now = ctx.currentTime;
 
-  // Low rumble sweep
-  const osc1 = ctx.createOscillator();
-  const gain1 = ctx.createGain();
-  osc1.type = "sawtooth";
-  osc1.frequency.setValueAtTime(40, now);
-  osc1.frequency.exponentialRampToValueAtTime(120, now + 1.2);
-  gain1.gain.setValueAtTime(0, now);
-  gain1.gain.linearRampToValueAtTime(0.08, now + 0.3);
-  gain1.gain.linearRampToValueAtTime(0.03, now + 1.2);
-  gain1.gain.linearRampToValueAtTime(0, now + 1.8);
-  osc1.connect(gain1).connect(ctx.destination);
-  osc1.start(now);
-  osc1.stop(now + 1.8);
+  // === HEAVY MECHANICAL POWER-ON RUMBLE ===
+  const rumble = ctx.createOscillator();
+  const rumbleGain = ctx.createGain();
+  const rumbleFilter = ctx.createBiquadFilter();
+  rumble.type = "sawtooth";
+  rumble.frequency.setValueAtTime(25, now);
+  rumble.frequency.exponentialRampToValueAtTime(80, now + 1.5);
+  rumble.frequency.exponentialRampToValueAtTime(45, now + 2.5);
+  rumbleFilter.type = "lowpass";
+  rumbleFilter.frequency.value = 200;
+  rumbleFilter.Q.value = 8;
+  rumbleGain.gain.setValueAtTime(0, now);
+  rumbleGain.gain.linearRampToValueAtTime(0.18, now + 0.15);
+  rumbleGain.gain.setValueAtTime(0.18, now + 1.0);
+  rumbleGain.gain.linearRampToValueAtTime(0.06, now + 2.5);
+  rumbleGain.gain.linearRampToValueAtTime(0, now + 3.2);
+  rumble.connect(rumbleFilter).connect(rumbleGain).connect(ctx.destination);
+  rumble.start(now);
+  rumble.stop(now + 3.3);
 
-  // Digital beep sequence
-  const beepFreqs = [880, 1100, 1320, 880, 1760];
-  beepFreqs.forEach((freq, i) => {
-    const t = now + 0.4 + i * 0.18;
-    const osc = ctx.createOscillator();
-    const g = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.value = freq;
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(0.12, t + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    osc.connect(g).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.15);
+  // === HYDRAULIC HISS (noise burst) ===
+  const noiseLen = ctx.sampleRate * 1.5;
+  const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
+  const noiseData = noiseBuf.getChannelData(0);
+  for (let i = 0; i < noiseLen; i++) noiseData[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuf;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = "bandpass";
+  noiseFilter.frequency.value = 3000;
+  noiseFilter.Q.value = 2;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0, now + 0.1);
+  noiseGain.gain.linearRampToValueAtTime(0.08, now + 0.15);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+  noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
+  noise.start(now + 0.1);
+  noise.stop(now + 1.0);
+
+  // === MECHANICAL SERVO CLICKS ===
+  const clickTimes = [0.3, 0.55, 0.75, 1.1, 1.4, 1.65, 1.95];
+  clickTimes.forEach((t) => {
+    const clickBuf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+    const clickData = clickBuf.getChannelData(0);
+    for (let i = 0; i < clickData.length; i++) {
+      clickData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.004));
+    }
+    const click = ctx.createBufferSource();
+    click.buffer = clickBuf;
+    const clickGain = ctx.createGain();
+    clickGain.gain.value = 0.15 + Math.random() * 0.1;
+    const clickFilter = ctx.createBiquadFilter();
+    clickFilter.type = "highpass";
+    clickFilter.frequency.value = 1500 + Math.random() * 2000;
+    click.connect(clickFilter).connect(clickGain).connect(ctx.destination);
+    click.start(now + t);
   });
 
-  // Rising power-up tone
-  const osc2 = ctx.createOscillator();
-  const gain2 = ctx.createGain();
-  osc2.type = "sine";
-  osc2.frequency.setValueAtTime(200, now + 1.4);
-  osc2.frequency.exponentialRampToValueAtTime(1400, now + 2.2);
-  gain2.gain.setValueAtTime(0, now + 1.4);
-  gain2.gain.linearRampToValueAtTime(0.1, now + 1.6);
-  gain2.gain.linearRampToValueAtTime(0, now + 2.4);
-  osc2.connect(gain2).connect(ctx.destination);
-  osc2.start(now + 1.4);
-  osc2.stop(now + 2.5);
+  // === TURBINE SPIN-UP ===
+  const turbine = ctx.createOscillator();
+  const turbineGain = ctx.createGain();
+  const turbineFilter = ctx.createBiquadFilter();
+  turbine.type = "square";
+  turbine.frequency.setValueAtTime(60, now + 1.0);
+  turbine.frequency.exponentialRampToValueAtTime(600, now + 2.4);
+  turbine.frequency.exponentialRampToValueAtTime(400, now + 3.0);
+  turbineFilter.type = "bandpass";
+  turbineFilter.frequency.setValueAtTime(200, now + 1.0);
+  turbineFilter.frequency.exponentialRampToValueAtTime(1200, now + 2.4);
+  turbineFilter.Q.value = 3;
+  turbineGain.gain.setValueAtTime(0, now + 1.0);
+  turbineGain.gain.linearRampToValueAtTime(0.07, now + 1.4);
+  turbineGain.gain.setValueAtTime(0.07, now + 2.4);
+  turbineGain.gain.linearRampToValueAtTime(0.02, now + 3.0);
+  turbineGain.gain.linearRampToValueAtTime(0, now + 3.5);
+  turbine.connect(turbineFilter).connect(turbineGain).connect(ctx.destination);
+  turbine.start(now + 1.0);
+  turbine.stop(now + 3.5);
 
-  // Final confirmation chime
-  const chime = ctx.createOscillator();
-  const chimeG = ctx.createGain();
-  chime.type = "sine";
-  chime.frequency.value = 1046.5; // C6
-  chimeG.gain.setValueAtTime(0, now + 2.3);
-  chimeG.gain.linearRampToValueAtTime(0.15, now + 2.35);
-  chimeG.gain.exponentialRampToValueAtTime(0.001, now + 3.0);
-  chime.connect(chimeG).connect(ctx.destination);
-  chime.start(now + 2.3);
-  chime.stop(now + 3.1);
+  // === POWER SURGE HUM ===
+  const hum = ctx.createOscillator();
+  const humGain = ctx.createGain();
+  hum.type = "sawtooth";
+  hum.frequency.value = 120;
+  humGain.gain.setValueAtTime(0, now + 2.0);
+  humGain.gain.linearRampToValueAtTime(0.12, now + 2.3);
+  humGain.gain.linearRampToValueAtTime(0.04, now + 2.8);
+  humGain.gain.linearRampToValueAtTime(0, now + 3.5);
+  hum.connect(humGain).connect(ctx.destination);
+  hum.start(now + 2.0);
+  hum.stop(now + 3.6);
+
+  // === FINAL LOCK-IN IMPACT ===
+  const impact = ctx.createOscillator();
+  const impactGain = ctx.createGain();
+  impact.type = "sine";
+  impact.frequency.setValueAtTime(80, now + 2.6);
+  impact.frequency.exponentialRampToValueAtTime(30, now + 3.2);
+  impactGain.gain.setValueAtTime(0, now + 2.6);
+  impactGain.gain.linearRampToValueAtTime(0.2, now + 2.62);
+  impactGain.gain.exponentialRampToValueAtTime(0.001, now + 3.3);
+  impact.connect(impactGain).connect(ctx.destination);
+  impact.start(now + 2.6);
+  impact.stop(now + 3.4);
+
+  // === CONFIRMATION PING ===
+  const ping = ctx.createOscillator();
+  const pingGain = ctx.createGain();
+  ping.type = "sine";
+  ping.frequency.value = 1046.5;
+  pingGain.gain.setValueAtTime(0, now + 2.9);
+  pingGain.gain.linearRampToValueAtTime(0.13, now + 2.93);
+  pingGain.gain.exponentialRampToValueAtTime(0.001, now + 3.6);
+  ping.connect(pingGain).connect(ctx.destination);
+  ping.start(now + 2.9);
+  ping.stop(now + 3.7);
 }
 
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
