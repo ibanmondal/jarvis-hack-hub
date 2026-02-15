@@ -10,8 +10,33 @@ const bootLines = [
   "JARVIS READY",
 ];
 
+function speakRobotic(text: string) {
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.85;
+  utter.pitch = 0.3;
+  utter.volume = 1;
+  // Try to pick a robotic-sounding voice
+  const voices = synth.getVoices();
+  const preferred = voices.find(
+    (v) =>
+      v.name.toLowerCase().includes("google uk english male") ||
+      v.name.toLowerCase().includes("daniel") ||
+      v.name.toLowerCase().includes("microsoft david") ||
+      v.name.toLowerCase().includes("alex")
+  );
+  if (preferred) utter.voice = preferred;
+  synth.speak(utter);
+}
+
 function playStartupSound(ctx: AudioContext) {
   const now = ctx.currentTime;
+
+  // === Robotic voice announcement (delayed slightly) ===
+  setTimeout(() => {
+    speakRobotic("JARVIS IS INITIALIZING THE PROTOCOL");
+  }, 400);
 
   // === HEAVY MECHANICAL POWER-ON RUMBLE ===
   const rumble = ctx.createOscillator();
@@ -25,15 +50,15 @@ function playStartupSound(ctx: AudioContext) {
   rumbleFilter.frequency.value = 200;
   rumbleFilter.Q.value = 8;
   rumbleGain.gain.setValueAtTime(0, now);
-  rumbleGain.gain.linearRampToValueAtTime(0.18, now + 0.15);
-  rumbleGain.gain.setValueAtTime(0.18, now + 1.0);
-  rumbleGain.gain.linearRampToValueAtTime(0.06, now + 2.5);
-  rumbleGain.gain.linearRampToValueAtTime(0, now + 3.2);
+  rumbleGain.gain.linearRampToValueAtTime(0.14, now + 0.15);
+  rumbleGain.gain.setValueAtTime(0.14, now + 1.0);
+  rumbleGain.gain.linearRampToValueAtTime(0.05, now + 2.5);
+  rumbleGain.gain.linearRampToValueAtTime(0, now + 3.5);
   rumble.connect(rumbleFilter).connect(rumbleGain).connect(ctx.destination);
   rumble.start(now);
-  rumble.stop(now + 3.3);
+  rumble.stop(now + 3.6);
 
-  // === HYDRAULIC HISS (noise burst) ===
+  // === HYDRAULIC HISS ===
   const noiseLen = ctx.sampleRate * 1.5;
   const noiseBuf = ctx.createBuffer(1, noiseLen, ctx.sampleRate);
   const noiseData = noiseBuf.getChannelData(0);
@@ -46,14 +71,14 @@ function playStartupSound(ctx: AudioContext) {
   noiseFilter.Q.value = 2;
   const noiseGain = ctx.createGain();
   noiseGain.gain.setValueAtTime(0, now + 0.1);
-  noiseGain.gain.linearRampToValueAtTime(0.08, now + 0.15);
+  noiseGain.gain.linearRampToValueAtTime(0.06, now + 0.15);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
   noise.connect(noiseFilter).connect(noiseGain).connect(ctx.destination);
   noise.start(now + 0.1);
   noise.stop(now + 1.0);
 
-  // === MECHANICAL SERVO CLICKS ===
-  const clickTimes = [0.3, 0.55, 0.75, 1.1, 1.4, 1.65, 1.95];
+  // === SERVO CLICKS ===
+  const clickTimes = [0.3, 0.55, 0.75, 1.1, 1.4, 1.65, 1.95, 2.2, 2.5];
   clickTimes.forEach((t) => {
     const clickBuf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
     const clickData = clickBuf.getChannelData(0);
@@ -63,7 +88,7 @@ function playStartupSound(ctx: AudioContext) {
     const click = ctx.createBufferSource();
     click.buffer = clickBuf;
     const clickGain = ctx.createGain();
-    clickGain.gain.value = 0.15 + Math.random() * 0.1;
+    clickGain.gain.value = 0.12 + Math.random() * 0.08;
     const clickFilter = ctx.createBiquadFilter();
     clickFilter.type = "highpass";
     clickFilter.frequency.value = 1500 + Math.random() * 2000;
@@ -76,20 +101,20 @@ function playStartupSound(ctx: AudioContext) {
   const turbineGain = ctx.createGain();
   const turbineFilter = ctx.createBiquadFilter();
   turbine.type = "square";
-  turbine.frequency.setValueAtTime(60, now + 1.0);
-  turbine.frequency.exponentialRampToValueAtTime(600, now + 2.4);
-  turbine.frequency.exponentialRampToValueAtTime(400, now + 3.0);
+  turbine.frequency.setValueAtTime(60, now + 0.8);
+  turbine.frequency.exponentialRampToValueAtTime(500, now + 2.2);
+  turbine.frequency.exponentialRampToValueAtTime(350, now + 3.0);
   turbineFilter.type = "bandpass";
-  turbineFilter.frequency.setValueAtTime(200, now + 1.0);
-  turbineFilter.frequency.exponentialRampToValueAtTime(1200, now + 2.4);
+  turbineFilter.frequency.setValueAtTime(200, now + 0.8);
+  turbineFilter.frequency.exponentialRampToValueAtTime(1000, now + 2.2);
   turbineFilter.Q.value = 3;
-  turbineGain.gain.setValueAtTime(0, now + 1.0);
-  turbineGain.gain.linearRampToValueAtTime(0.07, now + 1.4);
-  turbineGain.gain.setValueAtTime(0.07, now + 2.4);
+  turbineGain.gain.setValueAtTime(0, now + 0.8);
+  turbineGain.gain.linearRampToValueAtTime(0.05, now + 1.2);
+  turbineGain.gain.setValueAtTime(0.05, now + 2.2);
   turbineGain.gain.linearRampToValueAtTime(0.02, now + 3.0);
   turbineGain.gain.linearRampToValueAtTime(0, now + 3.5);
   turbine.connect(turbineFilter).connect(turbineGain).connect(ctx.destination);
-  turbine.start(now + 1.0);
+  turbine.start(now + 0.8);
   turbine.stop(now + 3.5);
 
   // === POWER SURGE HUM ===
@@ -98,8 +123,8 @@ function playStartupSound(ctx: AudioContext) {
   hum.type = "sawtooth";
   hum.frequency.value = 120;
   humGain.gain.setValueAtTime(0, now + 2.0);
-  humGain.gain.linearRampToValueAtTime(0.12, now + 2.3);
-  humGain.gain.linearRampToValueAtTime(0.04, now + 2.8);
+  humGain.gain.linearRampToValueAtTime(0.08, now + 2.3);
+  humGain.gain.linearRampToValueAtTime(0.03, now + 2.8);
   humGain.gain.linearRampToValueAtTime(0, now + 3.5);
   hum.connect(humGain).connect(ctx.destination);
   hum.start(now + 2.0);
@@ -109,26 +134,26 @@ function playStartupSound(ctx: AudioContext) {
   const impact = ctx.createOscillator();
   const impactGain = ctx.createGain();
   impact.type = "sine";
-  impact.frequency.setValueAtTime(80, now + 2.6);
-  impact.frequency.exponentialRampToValueAtTime(30, now + 3.2);
-  impactGain.gain.setValueAtTime(0, now + 2.6);
-  impactGain.gain.linearRampToValueAtTime(0.2, now + 2.62);
-  impactGain.gain.exponentialRampToValueAtTime(0.001, now + 3.3);
+  impact.frequency.setValueAtTime(80, now + 2.8);
+  impact.frequency.exponentialRampToValueAtTime(30, now + 3.4);
+  impactGain.gain.setValueAtTime(0, now + 2.8);
+  impactGain.gain.linearRampToValueAtTime(0.18, now + 2.82);
+  impactGain.gain.exponentialRampToValueAtTime(0.001, now + 3.5);
   impact.connect(impactGain).connect(ctx.destination);
-  impact.start(now + 2.6);
-  impact.stop(now + 3.4);
+  impact.start(now + 2.8);
+  impact.stop(now + 3.6);
 
   // === CONFIRMATION PING ===
   const ping = ctx.createOscillator();
   const pingGain = ctx.createGain();
   ping.type = "sine";
   ping.frequency.value = 1046.5;
-  pingGain.gain.setValueAtTime(0, now + 2.9);
-  pingGain.gain.linearRampToValueAtTime(0.13, now + 2.93);
-  pingGain.gain.exponentialRampToValueAtTime(0.001, now + 3.6);
+  pingGain.gain.setValueAtTime(0, now + 3.1);
+  pingGain.gain.linearRampToValueAtTime(0.13, now + 3.13);
+  pingGain.gain.exponentialRampToValueAtTime(0.001, now + 3.8);
   ping.connect(pingGain).connect(ctx.destination);
-  ping.start(now + 2.9);
-  ping.stop(now + 3.7);
+  ping.start(now + 3.1);
+  ping.stop(now + 3.9);
 }
 
 const LoadingScreen = ({ onComplete }: { onComplete: () => void }) => {
